@@ -315,20 +315,7 @@
     </div>
     <div class="card" id="quizCard"></div>
     
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, query, orderBy, limit, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // Global variables provided by the Canvas environment for Firebase
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-
-        // Initialize Firebase services
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-
+    <script>
         // Quiz data and state variables
         const quizData = [
             { word: "be", correctOption: "يكون" },
@@ -384,13 +371,6 @@
             totalSeconds = 0;
         let studentName = "";
 
-        // Sign in anonymously to enable Firestore access
-        onAuthStateChanged(auth, (user) => {
-            if (!user) {
-                signInAnonymously(auth).catch((error) => console.error("Anonymous sign-in failed:", error));
-            }
-        });
-
         function shuffle(array) {
             let currentIndex = array.length,
             randomIndex;
@@ -411,17 +391,23 @@
                     <h2>أهلاً بك في اختبار الأفعال!</h2>
                     <p>الرجاء إدخال اسمك للبدء:</p>
                     <input type="text" id="nameInput" placeholder="أدخل اسمك هنا..." autofocus/>
-                    <button class="btn" onclick="startGame()">بدء الاختبار</button>
+                    <button id="startButton" class="btn">بدء الاختبار</button>
                 </div>
             `;
+            // Add event listener to the start button after it's been added to the DOM
+            document.getElementById("startButton").addEventListener("click", startGame);
         }
 
         function startGame() {
             const nameInput = document.getElementById("nameInput");
             studentName = nameInput.value.trim();
             if (studentName === "") {
-                // Use a simple modal or alert() replacement for UI feedback
-                alert("الرجاء إدخال اسمك للمتابعة.");
+                const card = document.getElementById("quizCard");
+                const message = document.createElement("div");
+                message.textContent = "الرجاء إدخال اسمك للمتابعة.";
+                message.style.color = "red";
+                message.style.marginTop = "10px";
+                card.appendChild(message);
                 return;
             }
             startQuiz();
@@ -448,25 +434,30 @@
 
             const allWords = [...incorrectWords, correctWord];
             const shuffledAllWords = shuffle(allWords);
-
+            
+            // Generate HTML for the question and options
             document.getElementById("quizCard").innerHTML = `
-            <div class="top-row">
-            <div>سؤال ${index + 1} / ${shuffledQuizData.length}</div>
-            <div>⏳ <span id="time">${time}</span>ث</div>
-            </div>
-            <div class="timer-bar"><div class="timer-fill" id="timerFill" style="width:100%"></div></div>
-            <div class="question-word">
-            ${currentQuestion.correctOption}
-            </div>
-            <div class="options-container">
-            ${shuffledAllWords
-                .map(
-                (opt, i) =>
-                    `<button class="option" onclick="selectOption(this, '${opt}', '${correctWord}')">${opt}</button>`
-                )
-                .join("")}
-            </div>
-        `;
+                <div class="top-row">
+                    <div>سؤال ${index + 1} / ${shuffledQuizData.length}</div>
+                    <div>⏳ <span id="time">${time}</span>ث</div>
+                </div>
+                <div class="timer-bar"><div class="timer-fill" id="timerFill" style="width:100%"></div></div>
+                <div class="question-word">
+                    ${currentQuestion.correctOption}
+                </div>
+                <div class="options-container" id="optionsContainer">
+                    ${shuffledAllWords.map(opt => `<button class="option">${opt}</button>`).join("")}
+                </div>
+            `;
+            
+            // Get all the option buttons and add a click event listener to each one
+            const optionButtons = document.querySelectorAll(".option");
+            optionButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    selectOption(button, button.textContent, correctWord);
+                });
+            });
+
             startTimer();
         }
 
@@ -527,23 +518,38 @@
             }, 1000);
         }
 
-        async function saveScoreToFirestore(name, finalScore, finalTime) {
-            try {
-                // Ensure auth is ready before attempting to save
-                if (auth.currentUser) {
-                    const userId = auth.currentUser.uid;
-                    const scoresRef = collection(db, `artifacts/${appId}/public/data/quiz_scores`);
-                    await addDoc(scoresRef, {
-                        name: name,
-                        score: finalScore,
-                        time: finalTime,
-                        timestamp: new Date()
-                    });
-                    console.log("Score saved to Firestore successfully!");
+        function saveScoreToLocalStorage(name, finalScore, finalTime) {
+            const scoreData = {
+                name: name,
+                score: finalScore,
+                time: finalTime,
+                timestamp: new Date().toISOString()
+            };
+
+            // Get existing scores from localStorage
+            let scores = JSON.parse(localStorage.getItem('quizScores')) || [];
+            
+            // Add new score
+            scores.push(scoreData);
+            
+            // Sort by score (descending) then by time (ascending)
+            scores.sort((a, b) => {
+                if (b.score !== a.score) {
+                    return b.score - a.score;
                 }
-            } catch (e) {
-                console.error("Error adding document: ", e);
-            }
+                return a.time - b.time;
+            });
+            
+            // Keep only top 10 scores
+            scores = scores.slice(0, 10);
+            
+            // Save back to localStorage
+            localStorage.setItem('quizScores', JSON.stringify(scores));
+        }
+
+        function getTopScores() {
+            const scores = JSON.parse(localStorage.getItem('quizScores')) || [];
+            return scores.slice(0, 5); // Return top 5 scores
         }
 
         function showResult() {
@@ -551,60 +557,32 @@
             const minutes = Math.floor(totalSeconds / 60);
             const seconds = totalSeconds % 60;
             
-            // Save the score to Firestore
-            saveScoreToFirestore(studentName, score, totalSeconds);
+            // Save the score to localStorage
+            saveScoreToLocalStorage(studentName, score, totalSeconds);
 
-            // Display the result screen immediately
+            // Get top scores for leaderboard
+            const topScores = getTopScores();
+
+            // Render the result screen
             document.getElementById("quizCard").innerHTML = `
                 <div class="result">🎉 تهانينا يا ${studentName}!</div>
                 <div class="result-time">نتيجتك: ${score} من ${shuffledQuizData.length}</div>
                 <div class="result-time">⏱ الوقت الكلي: ${minutes} دقيقة و ${seconds} ثانية</div>
                 <div class="leaderboard">
-                    <h3>أفضل 5 نتائج (محدثة لحظيًا)</h3>
-                    <ol id="leaderboardList"></ol>
+                    <h3>أفضل 5 نتائج</h3>
+                    <ol id="leaderboardList">
+                        ${topScores.map(s => `
+                            <li>
+                                <span>${s.name}</span>
+                                <span>${s.score} نقطة</span>
+                            </li>
+                        `).join('')}
+                    </ol>
                 </div>
                 <button class="btn" onclick="location.reload()">إعادة المحاولة</button>
             `;
-            
-            // Listen for real-time updates from Firestore to populate the leaderboard
-            const scoresRef = collection(db, `artifacts/${appId}/public/data/quiz_scores`);
-            // Note: The Firestore orderBy() method can sometimes require a composite index,
-            // so we will sort the data client-side after fetching to avoid this.
-            const q = query(scoresRef);
-
-            onSnapshot(q, (querySnapshot) => {
-                const leaderboardList = document.getElementById("leaderboardList");
-                let allScores = [];
-                querySnapshot.forEach((doc) => {
-                    allScores.push(doc.data());
-                });
-
-                // Sort scores: higher score first, then faster time
-                allScores.sort((a, b) => {
-                    if (b.score !== a.score) {
-                        return b.score - a.score;
-                    } else {
-                        return a.time - b.time;
-                    }
-                });
-
-                // Display only the top 5 scores
-                const top5Scores = allScores.slice(0, 5);
-
-                let leaderboardHtml = top5Scores.map(s => `
-                    <li>
-                        <span>${s.name}</span>
-                        <span>${s.score} نقطة</span>
-                    </li>
-                `).join('');
-                
-                leaderboardList.innerHTML = leaderboardHtml;
-            }, (error) => {
-                console.error("Error listening for scores: ", error);
-            });
         }
         
-        // Initial state setup
         window.onload = showStartScreen;
     </script>
   </body>

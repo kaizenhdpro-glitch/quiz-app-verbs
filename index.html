@@ -314,260 +314,298 @@
       </div>
     </div>
     <div class="card" id="quizCard"></div>
-    <script>
-      // New quiz data with 35 common verbs and their Arabic meanings
-      const quizData = [
-        { word: "be", correctOption: "يكون" },
-        { word: "have", correctOption: "يملك / عنده" },
-        { word: "do", correctOption: "يفعل / يعمل" },
-        { word: "say", correctOption: "يقول" },
-        { word: "go", correctOption: "يذهب" },
-        { word: "can", correctOption: "يستطيع" },
-        { word: "get", correctOption: "يحصل على" },
-        { word: "make", correctOption: "يصنع / يجعل" },
-        { word: "know", correctOption: "يعرف" },
-        { word: "think", correctOption: "يفكر" },
-        { word: "take", correctOption: "يأخذ" },
-        { word: "see", correctOption: "يرى" },
-        { word: "come", correctOption: "يأتي" },
-        { word: "want", correctOption: "يريد" },
-        { word: "look", correctOption: "ينظر" },
-        { word: "use", correctOption: "يستخدم" },
-        { word: "find", correctOption: "يجد" },
-        { word: "give", correctOption: "يُعطي" },
-        { word: "tell", correctOption: "يخبر" },
-        { word: "work", correctOption: "يعمل" },
-        { word: "call", correctOption: "ينادي / يتصل" },
-        { word: "need", correctOption: "يحتاج" },
-        { word: "feel", correctOption: "يشعر" },
-        { word: "become", correctOption: "يصبح" },
-        { word: "leave", correctOption: "يغادر / يترك" },
-        { word: "put", correctOption: "يضع" },
-        { word: "let", correctOption: "يسمح / يدع" },
-        { word: "begin", correctOption: "يبدأ" },
-        { word: "help", correctOption: "يساعد" },
-        { word: "talk", correctOption: "يتحدث" },
-        { word: "start", correctOption: "يبدأ" },
-        { word: "hear", correctOption: "يسمع" },
-        { word: "play", correctOption: "يلعب" },
-        { word: "run", correctOption: "يركض" },
-        { word: "move", correctOption: "يتحرك" },
-      ];
-      
-      const correctSound = new Audio(
-        "https://mixkit.co/free-sound-effects/download/mixkit-correct-answer-tone-2870.wav"
-      );
-      const incorrectSound = new Audio(
-        "https://mixkit.co/free-sound-effects/download/mixkit-wrong-answer-fail-notification-946.wav"
-      );
-      let shuffledQuizData;
-      let index = 0,
-        score = 0,
-        time = 15,
-        timer,
-        startTime,
-        totalSeconds = 0;
-      let studentName = "";
+    
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, query, orderBy, limit, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-      function shuffle(array) {
-        let currentIndex = array.length,
-          randomIndex;
-        while (currentIndex !== 0) {
-          randomIndex = Math.floor(Math.random() * currentIndex);
-          currentIndex--;
-          [array[currentIndex], array[randomIndex]] = [
-            array[randomIndex],
-            array[currentIndex],
-          ];
-        }
-        return array;
-      }
+        // Global variables provided by the Canvas environment for Firebase
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
 
-      // Display the start screen
-      function showStartScreen() {
-        document.getElementById("quizCard").innerHTML = `
-            <div class="start-screen">
-                <h2>أهلاً بك في اختبار الأفعال!</h2>
-                <p>الرجاء إدخال اسمك للبدء:</p>
-                <input type="text" id="nameInput" placeholder="أدخل اسمك هنا..." autofocus/>
-                <button class="btn" onclick="startGame()">بدء الاختبار</button>
-            </div>
-        `;
-      }
+        // Initialize Firebase services
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
 
-      // Start the game
-      function startGame() {
-        const nameInput = document.getElementById("nameInput");
-        studentName = nameInput.value.trim();
-        if (studentName === "") {
-          alert("الرجاء إدخال اسمك للمتابعة.");
-          return;
-        }
-        startQuiz();
-      }
-
-      // Prepare and start the quiz
-      function startQuiz() {
-        shuffledQuizData = shuffle([...quizData]);
-        startTime = Date.now();
-        showQuestion();
-      }
-
-      // Display a single question and its options
-      function showQuestion() {
-        if (index >= shuffledQuizData.length) {
-          showResult();
-          return;
-        }
-
-        const currentQuestion = shuffledQuizData[index];
-        const correctWord = currentQuestion.word;
+        // Quiz data and state variables
+        const quizData = [
+            { word: "be", correctOption: "يكون" },
+            { word: "have", correctOption: "يملك / عنده" },
+            { word: "do", correctOption: "يفعل / يعمل" },
+            { word: "say", correctOption: "يقول" },
+            { word: "go", correctOption: "يذهب" },
+            { word: "can", correctOption: "يستطيع" },
+            { word: "get", correctOption: "يحصل على" },
+            { word: "make", correctOption: "يصنع / يجعل" },
+            { word: "know", correctOption: "يعرف" },
+            { word: "think", correctOption: "يفكر" },
+            { word: "take", correctOption: "يأخذ" },
+            { word: "see", correctOption: "يرى" },
+            { word: "come", correctOption: "يأتي" },
+            { word: "want", correctOption: "يريد" },
+            { word: "look", correctOption: "ينظر" },
+            { word: "use", correctOption: "يستخدم" },
+            { word: "find", correctOption: "يجد" },
+            { word: "give", correctOption: "يُعطي" },
+            { word: "tell", correctOption: "يخبر" },
+            { word: "work", correctOption: "يعمل" },
+            { word: "call", correctOption: "ينادي / يتصل" },
+            { word: "need", correctOption: "يحتاج" },
+            { word: "feel", correctOption: "يشعر" },
+            { word: "become", correctOption: "يصبح" },
+            { word: "leave", correctOption: "يغادر / يترك" },
+            { word: "put", correctOption: "يضع" },
+            { word: "let", correctOption: "يسمح / يدع" },
+            { word: "begin", correctOption: "يبدأ" },
+            { word: "help", correctOption: "يساعد" },
+            { word: "talk", correctOption: "يتحدث" },
+            { word: "start", correctOption: "يبدأ" },
+            { word: "hear", correctOption: "يسمع" },
+            { word: "play", correctOption: "يلعب" },
+            { word: "run", correctOption: "يركض" },
+            { word: "move", correctOption: "يتحرك" },
+        ];
         
-        // Select 3 random incorrect options (English words)
-        const otherOptions = quizData.filter(
-            (q) => q.word !== correctWord
+        const correctSound = new Audio(
+            "https://mixkit.co/free-sound-effects/download/mixkit-correct-answer-tone-2870.wav"
         );
-        const shuffledOtherOptions = shuffle([...otherOptions]);
-        const incorrectWords = shuffledOtherOptions.slice(0, 3).map(q => q.word);
+        const incorrectSound = new Audio(
+            "https://mixkit.co/free-sound-effects/download/mixkit-wrong-answer-fail-notification-946.wav"
+        );
 
-        // Combine correct and incorrect options
-        const allWords = [...incorrectWords, correctWord];
-        
-        // Shuffle the options before displaying
-        const shuffledAllWords = shuffle(allWords);
+        let shuffledQuizData;
+        let index = 0,
+            score = 0,
+            time = 15,
+            timer,
+            startTime,
+            totalSeconds = 0;
+        let studentName = "";
 
-        document.getElementById("quizCard").innerHTML = `
-        <div class="top-row">
-          <div>سؤال ${index + 1} / ${shuffledQuizData.length}</div>
-          <div>⏳ <span id="time">${time}</span>ث</div>
-        </div>
-        <div class="timer-bar"><div class="timer-fill" id="timerFill" style="width:100%"></div></div>
-        <div class="question-word">
-          ${currentQuestion.correctOption}
-        </div>
-        <div class="options-container">
-          ${shuffledAllWords
-            .map(
-              (opt, i) =>
-                `<button class="option" onclick="selectOption(this, '${opt}', '${correctWord}')">${opt}</button>`
-            )
-            .join("")}
-        </div>
-      `;
-        startTimer();
-      }
-
-      // Start the countdown timer
-      function startTimer() {
-        clearInterval(timer);
-        let t = time;
-        timer = setInterval(() => {
-          t--;
-          document.getElementById("time").textContent = t;
-          document.getElementById("timerFill").style.width = (t / time) * 100 + "%";
-          if (t <= 0) {
-            clearInterval(timer);
-            index++;
-            showQuestion();
-          }
-        }, 1000);
-      }
-      
-      // Handle option selection
-      function selectOption(button, selectedOption, correctOption) {
-        clearInterval(timer);
-        const btns = document.querySelectorAll(".option");
-        btns.forEach((b) => {
-            if (b.textContent === correctOption) b.classList.add("correct");
-            else if (b.textContent === selectedOption) b.classList.add("incorrect");
-            b.disabled = true;
-        });
-
-        if (selectedOption === correctOption) {
-          score++;
-          correctSound.play();
-          document.getElementById("quizCard").classList.add("correct-animation");
-          createStar(button);
-        } else {
-          incorrectSound.play();
-          document.getElementById("quizCard").classList.add("incorrect-animation");
-        }
-
-        setTimeout(() => {
-          document.getElementById("quizCard").classList.remove("correct-animation", "incorrect-animation");
-          index++;
-          showQuestion();
-        }, 1000);
-      }
-
-      // Create and animate a star
-      function createStar(sourceElement) {
-        const star = document.createElement('div');
-        star.className = 'star-animation';
-        star.innerHTML = '⭐'; // Using a star emoji for simplicity
-        
-        const rect = sourceElement.getBoundingClientRect();
-        star.style.left = `${rect.left + rect.width / 2}px`;
-        star.style.top = `${rect.top + rect.height / 2}px`;
-
-        document.body.appendChild(star);
-        
-        // Remove the star element after the animation is done
-        setTimeout(() => {
-          star.remove();
-        }, 1000);
-      }
-
-      // Display the final results and leaderboard
-      function showResult() {
-        totalSeconds = Math.floor((Date.now() - startTime) / 1000);
-        const minutes = Math.floor(totalSeconds / 60);
-        const seconds = totalSeconds % 60;
-        
-        // Retrieve scores from localStorage or initialize an empty array
-        let scores = JSON.parse(localStorage.getItem('quizScores')) || [];
-
-        // Add the current player's score
-        scores.push({ name: studentName, score: score, time: totalSeconds });
-        
-        // Sort scores: higher score first, then faster time
-        scores.sort((a, b) => {
-            if (b.score !== a.score) {
-                return b.score - a.score;
-            } else {
-                return a.time - b.time;
+        // Sign in anonymously to enable Firestore access
+        onAuthStateChanged(auth, (user) => {
+            if (!user) {
+                signInAnonymously(auth).catch((error) => console.error("Anonymous sign-in failed:", error));
             }
         });
-        
-        // Keep only the top 5 scores
-        scores = scores.slice(0, 5);
-        
-        // Save the updated scores back to localStorage
-        localStorage.setItem('quizScores', JSON.stringify(scores));
 
-        let leaderboardHtml = scores.map(s => `
-            <li>
-                <span>${s.name}</span>
-                <span>${s.score} نقطة</span>
-            </li>
-        `).join('');
+        function shuffle(array) {
+            let currentIndex = array.length,
+            randomIndex;
+            while (currentIndex !== 0) {
+            randomIndex = Math.floor(Math.random() * currentIndex);
+            currentIndex--;
+            [array[currentIndex], array[randomIndex]] = [
+                array[randomIndex],
+                array[currentIndex],
+            ];
+            }
+            return array;
+        }
 
-        document.getElementById("quizCard").innerHTML = `
-        <div class="result">🎉 تهانينا يا ${studentName}!</div>
-        <div class="result-time">نتيجتك: ${score} من ${shuffledQuizData.length}</div>
-        <div class="result-time">⏱ الوقت الكلي: ${minutes} دقيقة و ${seconds} ثانية</div>
-        <div class="leaderboard">
-            <h3>أفضل 5 نتائج</h3>
-            <ol>
-                ${leaderboardHtml}
-            </ol>
-        </div>
-        <button class="btn" onclick="location.reload()">إعادة المحاولة</button>
-      `;
-      }
-      
-      // Initial state setup
-      showStartScreen();
+        function showStartScreen() {
+            document.getElementById("quizCard").innerHTML = `
+                <div class="start-screen">
+                    <h2>أهلاً بك في اختبار الأفعال!</h2>
+                    <p>الرجاء إدخال اسمك للبدء:</p>
+                    <input type="text" id="nameInput" placeholder="أدخل اسمك هنا..." autofocus/>
+                    <button class="btn" onclick="startGame()">بدء الاختبار</button>
+                </div>
+            `;
+        }
+
+        function startGame() {
+            const nameInput = document.getElementById("nameInput");
+            studentName = nameInput.value.trim();
+            if (studentName === "") {
+                // Use a simple modal or alert() replacement for UI feedback
+                alert("الرجاء إدخال اسمك للمتابعة.");
+                return;
+            }
+            startQuiz();
+        }
+
+        function startQuiz() {
+            shuffledQuizData = shuffle([...quizData]);
+            startTime = Date.now();
+            showQuestion();
+        }
+
+        function showQuestion() {
+            if (index >= shuffledQuizData.length) {
+                showResult();
+                return;
+            }
+
+            const currentQuestion = shuffledQuizData[index];
+            const correctWord = currentQuestion.word;
+            
+            const otherOptions = quizData.filter((q) => q.word !== correctWord);
+            const shuffledOtherOptions = shuffle([...otherOptions]);
+            const incorrectWords = shuffledOtherOptions.slice(0, 3).map(q => q.word);
+
+            const allWords = [...incorrectWords, correctWord];
+            const shuffledAllWords = shuffle(allWords);
+
+            document.getElementById("quizCard").innerHTML = `
+            <div class="top-row">
+            <div>سؤال ${index + 1} / ${shuffledQuizData.length}</div>
+            <div>⏳ <span id="time">${time}</span>ث</div>
+            </div>
+            <div class="timer-bar"><div class="timer-fill" id="timerFill" style="width:100%"></div></div>
+            <div class="question-word">
+            ${currentQuestion.correctOption}
+            </div>
+            <div class="options-container">
+            ${shuffledAllWords
+                .map(
+                (opt, i) =>
+                    `<button class="option" onclick="selectOption(this, '${opt}', '${correctWord}')">${opt}</button>`
+                )
+                .join("")}
+            </div>
+        `;
+            startTimer();
+        }
+
+        function startTimer() {
+            clearInterval(timer);
+            let t = time;
+            timer = setInterval(() => {
+            t--;
+            document.getElementById("time").textContent = t;
+            document.getElementById("timerFill").style.width = (t / time) * 100 + "%";
+            if (t <= 0) {
+                clearInterval(timer);
+                index++;
+                showQuestion();
+            }
+            }, 1000);
+        }
+        
+        function selectOption(button, selectedOption, correctOption) {
+            clearInterval(timer);
+            const btns = document.querySelectorAll(".option");
+            btns.forEach((b) => {
+                if (b.textContent === correctOption) b.classList.add("correct");
+                else if (b.textContent === selectedOption) b.classList.add("incorrect");
+                b.disabled = true;
+            });
+
+            if (selectedOption === correctOption) {
+                score++;
+                correctSound.play();
+                document.getElementById("quizCard").classList.add("correct-animation");
+                createStar(button);
+            } else {
+                incorrectSound.play();
+                document.getElementById("quizCard").classList.add("incorrect-animation");
+            }
+
+            setTimeout(() => {
+                document.getElementById("quizCard").classList.remove("correct-animation", "incorrect-animation");
+                index++;
+                showQuestion();
+            }, 1000);
+        }
+
+        function createStar(sourceElement) {
+            const star = document.createElement('div');
+            star.className = 'star-animation';
+            star.innerHTML = '⭐';
+            
+            const rect = sourceElement.getBoundingClientRect();
+            star.style.left = `${rect.left + rect.width / 2}px`;
+            star.style.top = `${rect.top + rect.height / 2}px`;
+
+            document.body.appendChild(star);
+            
+            setTimeout(() => {
+                star.remove();
+            }, 1000);
+        }
+
+        async function saveScoreToFirestore(name, finalScore, finalTime) {
+            try {
+                // Ensure auth is ready before attempting to save
+                if (auth.currentUser) {
+                    const userId = auth.currentUser.uid;
+                    const scoresRef = collection(db, `artifacts/${appId}/public/data/quiz_scores`);
+                    await addDoc(scoresRef, {
+                        name: name,
+                        score: finalScore,
+                        time: finalTime,
+                        timestamp: new Date()
+                    });
+                    console.log("Score saved to Firestore successfully!");
+                }
+            } catch (e) {
+                console.error("Error adding document: ", e);
+            }
+        }
+
+        function showResult() {
+            totalSeconds = Math.floor((Date.now() - startTime) / 1000);
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+            
+            // Save the score to Firestore
+            saveScoreToFirestore(studentName, score, totalSeconds);
+
+            // Display the result screen immediately
+            document.getElementById("quizCard").innerHTML = `
+                <div class="result">🎉 تهانينا يا ${studentName}!</div>
+                <div class="result-time">نتيجتك: ${score} من ${shuffledQuizData.length}</div>
+                <div class="result-time">⏱ الوقت الكلي: ${minutes} دقيقة و ${seconds} ثانية</div>
+                <div class="leaderboard">
+                    <h3>أفضل 5 نتائج (محدثة لحظيًا)</h3>
+                    <ol id="leaderboardList"></ol>
+                </div>
+                <button class="btn" onclick="location.reload()">إعادة المحاولة</button>
+            `;
+            
+            // Listen for real-time updates from Firestore to populate the leaderboard
+            const scoresRef = collection(db, `artifacts/${appId}/public/data/quiz_scores`);
+            // Note: The Firestore orderBy() method can sometimes require a composite index,
+            // so we will sort the data client-side after fetching to avoid this.
+            const q = query(scoresRef);
+
+            onSnapshot(q, (querySnapshot) => {
+                const leaderboardList = document.getElementById("leaderboardList");
+                let allScores = [];
+                querySnapshot.forEach((doc) => {
+                    allScores.push(doc.data());
+                });
+
+                // Sort scores: higher score first, then faster time
+                allScores.sort((a, b) => {
+                    if (b.score !== a.score) {
+                        return b.score - a.score;
+                    } else {
+                        return a.time - b.time;
+                    }
+                });
+
+                // Display only the top 5 scores
+                const top5Scores = allScores.slice(0, 5);
+
+                let leaderboardHtml = top5Scores.map(s => `
+                    <li>
+                        <span>${s.name}</span>
+                        <span>${s.score} نقطة</span>
+                    </li>
+                `).join('');
+                
+                leaderboardList.innerHTML = leaderboardHtml;
+            }, (error) => {
+                console.error("Error listening for scores: ", error);
+            });
+        }
+        
+        // Initial state setup
+        window.onload = showStartScreen;
     </script>
   </body>
 </html>

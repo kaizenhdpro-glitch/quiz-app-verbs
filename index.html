@@ -66,15 +66,15 @@
   <body class="flex flex-col items-center min-h-screen p-4 bg-gray-100">
     <!-- Header -->
     <div class="header w-full bg-gradient-to-r from-blue-400 to-blue-600 text-white p-4 shadow-md flex justify-center items-center border-b-4 border-yellow-400">
-        <h1 class="text-2xl font-extrabold text-center flex items-center gap-2">
-            <!-- استخدام شعار SVG داخلي بدلاً من ملف خارجي لتجنب الأخطاء -->
-            <svg class="h-10 w-10 text-white" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
-            </svg>
-            مدرسة كايزن للتعليم واللغات
-            <svg class="h-10 w-10 text-white" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
-            </svg>
+        <h1 class="text-xl md:text-2xl font-extrabold text-center flex items-center gap-2">
+            <!-- استخدام صورة الشعار المحددة -->
+            <img src="kaizen-logo.png" alt="شعار مدرسة كايزن" class="h-10 w-10">
+            <div class="flex flex-col items-center">
+                <span>مدرسة كايزن للتعليم واللغات</span>
+                <span>حاسي الدلاعة</span>
+            </div>
+            <!-- استخدام صورة الشعار المحددة مرة أخرى -->
+            <img src="kaizen-logo.png" alt="شعار مدرسة كايزن" class="h-10 w-10">
         </h1>
     </div>
 
@@ -84,12 +84,7 @@
     </div>
 
     <script type="module">
-      // استيراد Firebase SDK
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-      import { getAuth, signInWithCustomToken, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-      import { getFirestore, doc, getDoc, setDoc, collection, query, limit, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-      // البيانات الأساسية
+      // البيانات الأساسية للاختبار
       const quizData = [
         { word: "be", correctOption: "يكون" },
         { word: "have", correctOption: "يملك / عنده" },
@@ -128,7 +123,7 @@
         { word: "move", correctOption: "يتحرك" },
       ];
 
-      // Setup Tone.js for sound effects
+      // إعداد مكتبة الصوت Tone.js
       const correctSynth = new Tone.PolySynth(Tone.Synth).toDestination();
       const incorrectSynth = new Tone.Synth().toDestination();
 
@@ -141,36 +136,8 @@
       let startTime;
       let totalSeconds = 0;
       let studentName = "";
-      let db, auth, userId, appId;
 
-      // تهيئة Firebase
-      async function initializeFirebase() {
-        try {
-          // استخدام المتغيرات العالمية المتاحة في بيئة كانفاس
-          const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-          appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-          const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : '';
-          
-          const app = initializeApp(firebaseConfig);
-          db = getFirestore(app);
-          auth = getAuth(app);
-          
-          if (initialAuthToken) {
-            await signInWithCustomToken(auth, initialAuthToken);
-          } else {
-            await signInAnonymously(auth);
-          }
-          userId = auth.currentUser?.uid || crypto.randomUUID();
-          console.log("Firebase initialized successfully. User ID:", userId);
-        } catch (error) {
-          console.error("Error initializing Firebase:", error);
-          // في حال فشل التهيئة، يمكن للتطبيق أن يستمر بدون ميزات الحفظ عبر الإنترنت
-          db = null;
-          auth = null;
-        }
-      }
-
-      // دالة لتوزيع عناصر المصفوفة
+      // دالة لتوزيع عناصر المصفوفة بشكل عشوائي
       function shuffle(array) {
         let currentIndex = array.length, randomIndex;
         while (currentIndex !== 0) {
@@ -189,7 +156,6 @@
             <p class="text-lg text-gray-700 mb-6">الرجاء إدخال اسمك للبدء:</p>
             <input type="text" id="nameInput" placeholder="أدخل اسمك هنا..." autofocus class="w-full md:w-4/5 p-3 text-lg border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 transition-colors duration-200" />
             <button id="startButton" class="btn bg-blue-600 text-white py-3 px-6 text-xl font-bold rounded-xl mt-6 shadow-lg hover:bg-blue-700 transition-transform duration-200 hover:scale-105">بدء الاختبار</button>
-            ${db ? `<div class="text-xs text-gray-500 mt-2">معرف المستخدم (للمشاركة): ${userId}</div>` : ''}
           </div>
         `;
         document.getElementById("startButton").addEventListener("click", startGame);
@@ -197,7 +163,6 @@
 
       // بدء اللعبة
       async function startGame() {
-        // Start the Tone.js audio context on a user gesture
         await Tone.start();
         const nameInput = document.getElementById("nameInput");
         studentName = nameInput.value.trim();
@@ -218,11 +183,28 @@
         startTime = Date.now();
         index = 0;
         score = 0;
-        showQuestion();
+        // إنشاء هيكل السؤال الثابت مرة واحدة لتحسين الأداء
+        const quizCard = document.getElementById("quizCard");
+        quizCard.innerHTML = `
+          <div class="flex justify-between items-center text-lg md:text-xl font-bold text-blue-600 mb-4">
+            <div>سؤال <span id="questionNumber"></span> / ${shuffledQuizData.length}</div>
+            <div>⏳ <span id="time"></span> ث</div>
+          </div>
+          <div class="h-2 bg-gray-200 rounded-full mb-4 overflow-hidden">
+            <div id="timerFill" class="h-full bg-yellow-400 transition-all duration-1000 linear" style="width:100%"></div>
+          </div>
+          <div id="questionWord" class="question-word text-4xl md:text-5xl font-extrabold text-blue-600 text-center my-6"></div>
+          <div id="optionsContainer" class="flex flex-col flex-grow justify-center">
+            ${Array(4).fill(0).map((_, i) => `<button id="option-${i}" class="option block w-full p-4 md:p-3 my-2 text-2xl font-bold text-gray-800 border-4 border-blue-500 rounded-xl bg-white cursor-pointer transition-all duration-300 hover:translate-y-[-2px] hover:shadow-lg"></button>`).join("")}
+          </div>
+        `;
+        // استخدام Event Delegation للتعامل مع النقر على الخيارات
+        document.getElementById("optionsContainer").addEventListener('click', handleOptionClick);
+        updateQuestionContent();
       }
 
-      // عرض السؤال الحالي
-      function showQuestion() {
+      // دالة لتحديث محتوى السؤال
+      function updateQuestionContent() {
         if (index >= shuffledQuizData.length) {
           showResult();
           return;
@@ -237,30 +219,18 @@
 
         const allWords = [...incorrectWords, correctWord];
         const shuffledAllWords = shuffle(allWords);
-        
-        document.getElementById("quizCard").innerHTML = `
-          <div class="flex justify-between items-center text-lg md:text-xl font-bold text-blue-600 mb-4">
-            <div>سؤال ${index + 1} / ${shuffledQuizData.length}</div>
-            <div>⏳ <span id="time">${time}</span> ث</div>
-          </div>
-          <div class="h-2 bg-gray-200 rounded-full mb-4 overflow-hidden">
-            <div id="timerFill" class="h-full bg-yellow-400 transition-all duration-1000 linear" style="width:100%"></div>
-          </div>
-          <div class="question-word text-4xl md:text-5xl font-extrabold text-blue-600 text-center my-6">
-            ${currentQuestion.correctOption}
-          </div>
-          <div id="optionsContainer" class="flex flex-col flex-grow justify-center">
-            ${shuffledAllWords.map(opt => `<button class="option block w-full p-4 md:p-3 my-2 text-2xl font-bold text-gray-800 border-4 border-blue-500 rounded-xl bg-white cursor-pointer transition-all duration-300 hover:translate-y-[-2px] hover:shadow-lg">${opt}</button>`).join("")}
-          </div>
-        `;
+
+        // تحديث محتوى العناصر بدلاً من إعادة إنشائها
+        document.getElementById("questionNumber").textContent = index + 1;
+        document.getElementById("questionWord").textContent = currentQuestion.correctOption;
         
         const optionButtons = document.querySelectorAll(".option");
-        optionButtons.forEach(button => {
-          button.addEventListener('click', () => {
-            selectOption(button, button.textContent, correctWord);
-          });
+        optionButtons.forEach((button, i) => {
+          button.textContent = shuffledAllWords[i];
+          button.classList.remove("correct", "incorrect");
+          button.disabled = false;
         });
-
+        
         startTimer();
       }
 
@@ -268,6 +238,9 @@
       function startTimer() {
         clearInterval(timer);
         let t = time;
+        document.getElementById("time").textContent = t;
+        document.getElementById("timerFill").style.width = "100%";
+        
         timer = setInterval(() => {
           t--;
           document.getElementById("time").textContent = t;
@@ -275,22 +248,28 @@
           if (t <= 0) {
             clearInterval(timer);
             index++;
-            showQuestion();
+            updateQuestionContent();
           }
         }, 1000);
       }
       
-      // اختيار الإجابة
-      function selectOption(button, selectedOption, correctOption) {
+      // دالة التعامل مع النقر على الخيار
+      function handleOptionClick(event) {
+        const button = event.target;
+        if (!button.classList.contains('option')) return;
+
         clearInterval(timer);
+        const selectedOption = button.textContent;
+        const correctWord = shuffledQuizData[index].word;
+
         const btns = document.querySelectorAll(".option");
         btns.forEach((b) => {
-          if (b.textContent === correctOption) b.classList.add("correct");
+          if (b.textContent === correctWord) b.classList.add("correct");
           else if (b.textContent === selectedOption) b.classList.add("incorrect");
           b.disabled = true;
         });
 
-        if (selectedOption === correctOption) {
+        if (selectedOption === correctWord) {
           score++;
           correctSynth.triggerAttackRelease(["C4", "E4", "G4"], "8n");
           document.getElementById("quizCard").classList.add("correct-animation");
@@ -303,7 +282,7 @@
         setTimeout(() => {
           document.getElementById("quizCard").classList.remove("correct-animation", "incorrect-animation");
           index++;
-          showQuestion();
+          updateQuestionContent();
         }, 1000);
       }
 
@@ -324,98 +303,23 @@
         }, 1000);
       }
 
-      // حفظ النتيجة في Firestore
-      async function saveScoreToFirestore(name, finalScore, finalTime) {
-        if (!db) {
-          console.error("Firestore is not available. Score will not be saved.");
-          return;
-        }
-        try {
-          const quizId = 'english-verbs-quiz';
-          const scoresRef = collection(db, `artifacts/${appId}/public/data/scores`);
-          console.log(`Saving score to Firestore at path: artifacts/${appId}/public/data/scores`);
-          await setDoc(doc(scoresRef), {
-            name: name,
-            score: finalScore,
-            time: finalTime,
-            timestamp: new Date().toISOString(),
-          });
-          console.log("Score saved successfully to Firestore!");
-        } catch (error) {
-          console.error("Error saving score to Firestore:", error);
-        }
-      }
-
-      // عرض لوحة المتصدرين
+      // عرض لوحة النتائج النهائية
       function showResult() {
         totalSeconds = Math.floor((Date.now() - startTime) / 1000);
         const minutes = Math.floor(totalSeconds / 60);
         const seconds = totalSeconds % 60;
         
-        // حفظ النتيجة
-        saveScoreToFirestore(studentName, score, totalSeconds);
-
         document.getElementById("quizCard").innerHTML = `
           <div class="result text-center font-extrabold text-4xl md:text-5xl text-blue-600 mb-4">🎉 تهانينا يا ${studentName}!</div>
           <div class="result-time text-center text-2xl text-gray-700">نتيجتك: <span class="font-bold">${score}</span> من <span class="font-bold">${shuffledQuizData.length}</span></div>
           <div class="result-time text-center text-xl text-gray-600 mt-2">⏱ الوقت الكلي: ${minutes} دقيقة و ${seconds} ثانية</div>
-          <div class="leaderboard mt-8 text-center">
-            <h3 class="text-2xl font-bold text-blue-600 mb-4">أفضل 5 نتائج</h3>
-            <ol id="leaderboardList" class="list-decimal list-inside text-left mx-auto max-w-sm">
-              <div class="flex justify-center items-center">
-                <p>جاري تحميل النتائج...</p>
-              </div>
-            </ol>
-          </div>
           <button class="btn bg-blue-600 text-white py-3 px-6 text-xl font-bold rounded-xl mt-6 shadow-lg hover:bg-blue-700 transition-transform duration-200 hover:scale-105 mx-auto">إعادة المحاولة</button>
         `;
         document.querySelector(".btn").addEventListener("click", () => location.reload());
-
-        if (db) {
-          listenForLeaderboardUpdates();
-        } else {
-          document.getElementById('leaderboardList').innerHTML = `<p class="text-center text-red-500">لم يتمكن التطبيق من الاتصال بقاعدة البيانات. النتائج لا يمكن حفظها.</p>`;
-        }
       }
       
-      // الاستماع للوحة المتصدرين في الوقت الحقيقي
-      function listenForLeaderboardUpdates() {
-        const scoresRef = collection(db, `artifacts/${appId}/public/data/scores`);
-        console.log(`Fetching leaderboard from Firestore at path: artifacts/${appId}/public/data/scores`);
-        const q = query(scoresRef, limit(5)); // لا نستخدم orderBy() لتجنب مشاكل الفهرسة
-
-        onSnapshot(q, (snapshot) => {
-          const scores = [];
-          snapshot.forEach((doc) => {
-            scores.push(doc.data());
-          });
-
-          // فرز النتائج يدوياً بعد جلبها
-          scores.sort((a, b) => {
-            if (b.score !== a.score) {
-              return b.score - a.score;
-            }
-            return a.time - b.time;
-          });
-
-          const leaderboardList = document.getElementById("leaderboardList");
-          if (leaderboardList) {
-            leaderboardList.innerHTML = scores.map(s => `
-              <li class="bg-gray-50 rounded-lg p-3 my-2 font-semibold text-gray-800 flex justify-between items-center shadow-sm">
-                <span>${s.name}</span>
-                <span>${s.score} نقطة في ${s.time} ثانية</span>
-              </li>
-            `).join('');
-          }
-        }, (error) => {
-          console.error("Error fetching leaderboard: ", error);
-          document.getElementById('leaderboardList').innerHTML = `<p class="text-center text-red-500">حدث خطأ أثناء تحميل لوحة المتصدرين.</p>`;
-        });
-      }
-
-      // تهيئة Firebase عند تحميل الصفحة
-      window.onload = async () => {
-        await initializeFirebase();
+      // بدء التطبيق عند تحميل الصفحة
+      window.onload = () => {
         showStartScreen();
       };
     </script>

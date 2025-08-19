@@ -4,16 +4,13 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>اختبار الأفعال الإنجليزية</title>
-    <!-- تضمين خط Baloo Bhaijaan 2 -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Baloo+Bhaijaan+2:wght@400;600;800&display=swap"
       rel="stylesheet"
     />
-    <!-- تضمين Tailwind CSS من CDN لإضافة تصميم احترافي وسريع -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Tone.js for sound generation -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
     <style>
       /* تخصيص الخط الرئيسي */
@@ -64,24 +61,19 @@
     </style>
   </head>
   <body class="flex flex-col items-center min-h-screen p-4 bg-gray-100">
-    <!-- Header -->
     <div class="header w-full bg-gradient-to-r from-blue-400 to-blue-600 text-white p-4 shadow-md flex justify-center items-center border-b-4 border-yellow-400">
         <h1 class="text-xl md:text-2xl font-extrabold text-center flex items-center gap-2">
-            <!-- استخدام صورة الشعار المحددة -->
             <img src="kaizen-logo.png" alt="شعار مدرسة كايزن" class="h-10 w-10">
             <div class="flex flex-col items-center">
                 <span>مدرسة كايزن للتعليم واللغات</span>
                 <span>حاسي الدلاعة</span>
             </div>
-            <!-- استخدام صورة الشعار المحددة مرة أخرى -->
             <img src="kaizen-logo.png" alt="شعار مدرسة كايزن" class="h-10 w-10">
         </h1>
     </div>
 
-    <!-- بطاقة التطبيق الرئيسية -->
     <div id="quizCard" class="card bg-white rounded-2xl shadow-xl p-6 md:p-8 max-w-lg w-full mt-8 flex flex-col min-h-[500px] animate-fadeIn">
-        <!-- المحتوى سيتم إدراجه هنا بواسطة JavaScript -->
-    </div>
+        </div>
 
     <script type="module">
       // البيانات الأساسية للاختبار
@@ -97,7 +89,6 @@
         { word: "know", correctOption: "يعرف" },
         { word: "think", correctOption: "يفكر" },
         { word: "take", correctOption: "يأخذ" },
-        { word: "see", correctOption: "يرى" },
         { word: "come", correctOption: "يأتي" },
         { word: "want", correctOption: "يريد" },
         { word: "look", correctOption: "ينظر" },
@@ -113,7 +104,6 @@
         { word: "leave", correctOption: "يغادر / يترك" },
         { word: "put", correctOption: "يضع" },
         { word: "let", correctOption: "يسمح / يدع" },
-        { word: "begin", correctOption: "يبدأ" },
         { word: "help", correctOption: "يساعد" },
         { word: "talk", correctOption: "يتحدث" },
         { word: "start", correctOption: "يبدأ" },
@@ -195,7 +185,7 @@
           </div>
           <div id="questionWord" class="question-word text-4xl md:text-5xl font-extrabold text-blue-600 text-center my-6"></div>
           <div id="optionsContainer" class="flex flex-col flex-grow justify-center">
-            ${Array(4).fill(0).map((_, i) => `<button id="option-${i}" class="option block w-full p-4 md:p-3 my-2 text-2xl font-bold text-gray-800 border-4 border-blue-500 rounded-xl bg-white cursor-pointer transition-all duration-300 hover:translate-y-[-2px] hover:shadow-lg"></button>`).join("")}
+            ${Array(4).fill(0).map((_, i) => `<button id="option-${i}" class="option block w-full p-4 md:p-3 my-2 text-3xl font-bold text-gray-800 border-4 border-blue-500 rounded-xl bg-white cursor-pointer transition-all duration-300 hover:translate-y-[-2px] hover:shadow-lg"></button>`).join("")}
           </div>
         `;
         // استخدام Event Delegation للتعامل مع النقر على الخيارات
@@ -309,10 +299,39 @@
         const minutes = Math.floor(totalSeconds / 60);
         const seconds = totalSeconds % 60;
         
+        // حفظ النتيجة الحالية
+        const currentResult = { name: studentName, score: score };
+        let allScores = JSON.parse(localStorage.getItem('topScores')) || [];
+        allScores.push(currentResult);
+        
+        // ترتيب النتائج من الأعلى إلى الأسفل
+        allScores.sort((a, b) => b.score - a.score);
+        
+        // الاحتفاظ بأفضل 5 نتائج فقط
+        const top5Scores = allScores.slice(0, 5);
+        
+        // حفظ القائمة المحدثة
+        localStorage.setItem('topScores', JSON.stringify(top5Scores));
+        
+        // بناء HTML لعرض أفضل 5 نتائج
+        let topScoresHTML = '<div class="mt-6 w-full"><h3 class="text-xl font-extrabold text-blue-600 mb-3 text-center">🏆 أفضل 5 نتائج</h3><ul class="space-y-2">';
+        top5Scores.forEach((entry, i) => {
+          const medals = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣'];
+          const medal = medals[i] || '';
+          const isCurrentUser = entry.name === studentName && entry.score === score;
+          const rowClass = isCurrentUser ? 'bg-yellow-100 border-r-4 border-yellow-500 px-2 py-1 rounded' : 'bg-gray-50 px-2 py-1 rounded';
+          topScoresHTML += `<li class="flex justify-between items-center ${rowClass}">
+                               <span class="font-bold">${medal} ${entry.name}</span>
+                               <span class="text-lg font-bold text-blue-500">${entry.score}</span>
+                             </li>`;
+        });
+        topScoresHTML += '</ul></div>';
+
         document.getElementById("quizCard").innerHTML = `
           <div class="result text-center font-extrabold text-4xl md:text-5xl text-blue-600 mb-4">🎉 تهانينا يا ${studentName}!</div>
           <div class="result-time text-center text-2xl text-gray-700">نتيجتك: <span class="font-bold">${score}</span> من <span class="font-bold">${shuffledQuizData.length}</span></div>
           <div class="result-time text-center text-xl text-gray-600 mt-2">⏱ الوقت الكلي: ${minutes} دقيقة و ${seconds} ثانية</div>
+          ${topScoresHTML}
           <button class="btn bg-blue-600 text-white py-3 px-6 text-xl font-bold rounded-xl mt-6 shadow-lg hover:bg-blue-700 transition-transform duration-200 hover:scale-105 mx-auto">إعادة المحاولة</button>
         `;
         document.querySelector(".btn").addEventListener("click", () => location.reload());
